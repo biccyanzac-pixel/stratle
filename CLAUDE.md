@@ -44,6 +44,10 @@ first (house rules, kit, hub, workers, deploy).
   last step**, after checking `git status` in `../jacob.gg`: other agents may be editing it.
 - Ports: site/preview 8084, worker 8841 (in the PLAYBOOK table).
 - `splitsteal` is retired from the schedule (steal wins ~74% of days); the template stays for a possible redesign.
+- Schedule weights (`scripts/schedule-lib.js` WEIGHT): selfref and the 4-6 option formats (threshold, common, catch)
+  at half weight (about two-thirds as often); the numeric formats get continuous scores.
+- When a template changes, keep old params behaving identically (published days are pinned): add new modes/params
+  instead of changing what existing ones mean, and redeploy the worker (it bundles the engine).
 - Commit as `biccyanzac-pixel <285977456+biccyanzac-pixel@users.noreply.github.com>` (repo-local).
 
 ## Tests

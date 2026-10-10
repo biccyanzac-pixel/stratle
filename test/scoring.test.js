@@ -70,8 +70,8 @@ test('explanations are built from the data, not hard-coded', () => {
   const p = { range: 100, stat: 'mean', a: [2, 3], b: 0 };
   const a = handQuestion('target', p, { 30: 10 });
   const b = handQuestion('target', p, { 60: 10 });
-  assert.match(explain(a), /average guess was 30 and the target \(2\/3 of the average\) was 20\. The best number was 20/);
-  assert.match(explain(b), /average guess was 60 and the target \(2\/3 of the average\) was 40\. The best number was 40/);
+  assert.match(explain(a), /crowd's average was 30 and the target \(2\/3 of the average\) was 20\. The best number was 20/);
+  assert.match(explain(b), /crowd's average was 60 and the target \(2\/3 of the average\) was 40\. The best number was 40/);
   for (const template of ['target', 'avoid', 'underbid']) {
     const q = generateQuestion({ seed: 'explain', template, settings: { tau: 1.5, noise: 0.04, joker: 0.02 } });
     const s = summarize(q);

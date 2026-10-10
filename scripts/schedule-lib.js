@@ -3,8 +3,8 @@
 // Rules (checked by checkSchedule and test/schedule.test.js):
 //   - every day has QUESTIONS_PER_DAY different templates;
 //   - no template is given an identical parameter set within REPEAT_WINDOW days.
-// Templates are picked at random, weighted towards the ones used least recently, so each appears
-// about equally often. Everything is seeded by the date, but a day also depends on the days before it
+// Templates are picked at random, weighted towards the ones used least recently (and by WEIGHT), so each
+// appears about as often as its weight says. Everything is seeded by the date, but a day also depends on the days before it
 // (the repeat rule), so the schedule is extended from the kept past, never re-planned from scratch.
 
 import { makeRng } from '../site/js/engine/rng.js';
@@ -14,6 +14,10 @@ export const QUESTIONS_PER_DAY = 5;
 // Templates that exist but are not scheduled. splitsteal: steal wins ~74% of days (always with no penalty).
 export const RETIRED = ['splitsteal'];
 export const SCHEDULED = Object.keys(TEMPLATES).filter((t) => !RETIRED.includes(t));
+// Relative frequency. The YES/NO question and the 4-6 option formats score in coarse steps and vary less, so
+// they get half weight; with the staleness term that works out at about two-thirds as often as the rest.
+export const WEIGHT = { selfref: 0.5, threshold: 0.5, common: 0.5, catch: 0.5 };
+export const weightOf = (t) => WEIGHT[t] ?? 1;
 export const REPEAT_WINDOW = 90;
 const MAX_TRIES = 200;
 
@@ -51,7 +55,8 @@ export function planDay(date, { last, used }) {
   const pool = [...SCHEDULED];
   const chosen = [];
   while (chosen.length < QUESTIONS_PER_DAY && pool.length) {
-    const weights = pool.map((t) => (last.has(t) ? Math.min(30, daysBetween(last.get(t), date)) : 30) ** 2);
+    // Squared, like the staleness term, so a weight of 0.5 really means about half as often.
+    const weights = pool.map((t) => weightOf(t) ** 2 * (last.has(t) ? Math.min(30, daysBetween(last.get(t), date)) : 30) ** 2);
     let u = rng() * weights.reduce((a, b) => a + b, 0);
     let i = 0;
     while (u >= weights[i]) u -= weights[i++];

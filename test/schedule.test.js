@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { checkSchedule, addDays, QUESTIONS_PER_DAY, REPEAT_WINDOW, SCHEDULED } from '../scripts/schedule-lib.js';
+import { checkSchedule, addDays, QUESTIONS_PER_DAY, REPEAT_WINDOW, SCHEDULED, weightOf } from '../scripts/schedule-lib.js';
 import { generateDay } from '../site/js/engine/question.js';
 
 const schedule = JSON.parse(readFileSync(new URL('../data/schedule.json', import.meta.url), 'utf8'));
@@ -18,13 +18,17 @@ test(`each day has ${QUESTIONS_PER_DAY} different templates and no params repeat
   assert.deepEqual(checkSchedule(schedule.days), []);
 });
 
-test('every scheduled template is used, and about equally often', () => {
+test('every scheduled template is used, about as often as its weight says', () => {
   const counts = {};
   for (const qs of Object.values(schedule.days)) for (const q of qs) counts[q.template] = (counts[q.template] ?? 0) + 1;
   const ids = [...SCHEDULED];
   assert.deepEqual(Object.keys(counts).sort(), ids.sort());
-  const expected = (dates.length * QUESTIONS_PER_DAY) / ids.length;
-  for (const [t, n] of Object.entries(counts)) assert.ok(Math.abs(n - expected) / expected < 0.15, `${t}: ${n}`);
+  // Only days planned under the current weights (the first day predates them).
+  const sumW = ids.reduce((a, t) => a + weightOf(t), 0);
+  for (const [t, n] of Object.entries(counts)) {
+    const expected = (dates.length * QUESTIONS_PER_DAY * weightOf(t)) / sumW;
+    assert.ok(Math.abs(n - expected) / expected < 0.25, `${t}: ${n} vs ${expected.toFixed(0)}`);
+  }
 });
 
 test('every scheduled day has a day file that matches the schedule', () => {

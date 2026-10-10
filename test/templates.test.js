@@ -101,3 +101,79 @@ test('every template explains a generated crowd from its data', () => {
     }
   }
 });
+
+test('target: middle-half and top-half averages', async () => {
+  const { partialMean } = await import('../site/js/engine/dist.js');
+  const d = counts(0, 100, { 10: 1, 20: 2, 30: 1 });
+  assert.equal(partialMean(d, 0.25, 0.75), 20);
+  assert.equal(partialMean(d, 0.5, 1), 25);
+  assert.deepEqual(br('target', { range: 100, stat: 'trimmed', a: [2, 3], b: 0 }, { 10: 1, 20: 2, 30: 1 }).answers, [13]); // 13.3
+  assert.deepEqual(br('target', { range: 100, stat: 'upper', a: [2, 3], b: 0 }, { 10: 1, 20: 2, 30: 1 }).answers, [17]); // 16.7
+  // A joker at 100 moves the average but not the middle-half average.
+  assert.deepEqual(br('target', { range: 100, stat: 'trimmed', a: [2, 3], b: 0 }, { 10: 1, 20: 2, 30: 1, 100: 0 }).answers, [13]);
+});
+
+test('stand out: farther is better, but the outer x% score nothing', () => {
+  const every = Object.fromEntries(Array.from({ length: 101 }, (_, v) => [v, 1]));
+  const far = { mode: 'far', range: 100, stat: 'median', outer: 10 };
+  const r = br('avoid', far, every);
+  assert.deepEqual(r.answers, [10, 90]); // 40 from the median, just inside the outer 10%
+  const q = handQuestion('avoid', far, every);
+  assert.equal(scoreAnswer(q, 30).score, 50); // 20 away out of 40
+  assert.equal(scoreAnswer(q, 9).score, 0);
+  assert.equal(scoreAnswer(q, 50).score, 0);
+  const rank = { mode: 'farRank', range: 100, outer: 10 };
+  assert.deepEqual(br('avoid', rank, every).answers, [10, 90]);
+  assert.equal(scoreAnswer(handQuestion('avoid', rank, every), 5).score, 0);
+});
+
+test('bid under the line: the soft line costs points instead of everything', () => {
+  const p = { max: 20, c: [1, 1], stat: 'mean', over: 2 };
+  const q = handQuestion('underbid', p, { 10: 10 }); // line exactly 10
+  assert.equal(scoreAnswer(q, 9).score, 90);
+  assert.equal(scoreAnswer(q, 10).score, 100); // 0 over: keeps the bid
+  assert.equal(scoreAnswer(q, 11).score, 90); // 11 - 2
+  assert.equal(scoreAnswer(q, 16).score, 40); // 16 - 12
+  assert.equal(scoreAnswer(q, 20).score, 0); // 20 - 20
+  assert.equal(scoreAnswer(handQuestion('underbid', { max: 20, c: [1, 1], stat: 'mean' }, { 10: 10 }), 10).score, 0); // hard line
+});
+
+test('lowball: you score only under the crowd percentile', () => {
+  const crowd = { 2: 30, 5: 30, 9: 40 };
+  assert.deepEqual(br('lowball', { max: 20, share: 30 }, crowd).answers, [1]); // 30th percentile is 2
+  assert.deepEqual(br('lowball', { max: 20, share: 50 }, crowd).answers, [4]); // median is 5
+  const q = handQuestion('lowball', { max: 20, share: 50, over: 2 }, crowd);
+  assert.equal(scoreAnswer(q, 4).score, 100);
+  assert.equal(scoreAnswer(q, 5).score, 75); // 5 - 2 × 1 = 3 of 4
+});
+
+test('crowded points: crowded numbers score 0', () => {
+  const crowd = { 10: 50, 9: 30, 8: 5, 7: 15 };
+  assert.deepEqual(br('crowdpoints', { max: 10, rule: 'cap', cap: 10 }, crowd).answers, [8]);
+  assert.deepEqual(br('crowdpoints', { max: 10, rule: 'top', k: 2 }, crowd).answers, [8]);
+  assert.deepEqual(br('crowdpoints', { max: 10, rule: 'top', k: 3 }, crowd).answers, [8]); // 10, 9 and 7 are out; 8 is not top 3
+});
+
+test('rare number: smooth scores by rank, ties shared', () => {
+  const p = { max: 5, order: 'least', shape: 'linear' };
+  const q = handQuestion('rare', p, { 1: 40, 2: 30, 3: 20, 4: 10, 5: 10 });
+  assert.equal(scoreAnswer(q, 4).score, 100); // 4 and 5 tie for rarest: (100 + 75) / 2 each, the best
+  assert.equal(scoreAnswer(q, 5).score, 100);
+  assert.equal(scoreAnswer(q, 3).score, Math.round((50 / 87.5) * 100));
+  assert.equal(scoreAnswer(q, 1).score, 0);
+});
+
+test('every template keeps its jokers and theorist answers inside its range', async () => {
+  const { makeRng } = await import('../site/js/engine/rng.js');
+  for (const [id, tpl] of Object.entries(TEMPLATES)) {
+    for (let i = 0; i < 200; i++) {
+      const p = tpl.sampleParams(makeRng(`range-check|${id}|${i}`));
+      const { min, max } = tpl.grid(p);
+      const inside = (v) => Number.isInteger(v) && v >= min && v <= max;
+      const eq = tpl.equilibrium(p);
+      if (eq) assert.ok(eq.every(inside), `${id} ${JSON.stringify(p)} theorists ${eq}`);
+      // Jokers outside a small range are dropped by the engine, but at least one must fit.
+      assert.ok(tpl.jokers(p).some(inside), `${id} ${JSON.stringify(p)} jokers`);
+    }
+  }
+});

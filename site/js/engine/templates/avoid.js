@@ -1,4 +1,9 @@
-// Template 2: avoid the crowd. Two modes:
+// Template 2: avoid the crowd. Scheduled modes (continuous scores):
+//   far:      "You score more the farther your number is from the crowd's median, but nothing if it is
+//             among the lowest or highest x% of the crowd's numbers."
+//   farRank:  the same in rank: the farther your place in the line from the middle, the more you score,
+//             but the lowest and highest x% of places score nothing.
+// Older banded modes, kept for the calibration question and published days:
 //   distance: "1 point for every full 10 you are from the crowd's median, but nothing if you land
 //             outside the middle 80% of answers." Stand out without being an outlier.
 //   rank:     "Everyone's numbers are lined up. The middle 10% score nothing, the next 10% on each
@@ -33,9 +38,10 @@ export const avoid = {
   kind: 'number',
 
   sampleParams(rng) {
-    if (rng() < 0.5) return { mode: 'rank', range: pick(rng, [100, 200, 500, 1000]), ...pick(rng, RINGS) };
-    const range = pick(rng, [100, 200]);
-    return { mode: 'distance', range, stat: rng() < 0.5 ? 'median' : 'mean', band: (pick(rng, [5, 10]) * range) / 100, fence: pick(rng, FENCES) };
+    if (rng() < 0.7) {
+      return { mode: 'far', range: pick(rng, [50, 100, 200, 300, 500, 1000]), stat: rng() < 0.5 ? 'median' : 'mean', outer: pick(rng, [5, 10, 15, 20, 25]) };
+    }
+    return { mode: 'farRank', range: pick(rng, [100, 200, 500, 1000]), outer: pick(rng, [5, 10, 15, 20]) };
   },
 
   grid: ({ range }) => ({ min: 0, max: range }),
@@ -44,6 +50,12 @@ export const avoid = {
   equilibrium: () => null, // no single answer that logic leads everyone to
 
   prompt(p) {
+    if (p.mode === 'far') {
+      return `Pick a whole number from 0 to ${p.range}. You score more the farther your number is from the crowd's ${statWord(p)}, but nothing if it is among the lowest ${p.outer}% or the highest ${p.outer}% of the crowd's numbers.`;
+    }
+    if (p.mode === 'farRank') {
+      return `Pick a whole number from 0 to ${p.range}. Everyone's numbers are lined up from lowest to highest. You score more the farther your place in the line is from the middle, but the lowest ${p.outer}% and the highest ${p.outer}% of places score nothing.`;
+    }
     if (p.mode === 'rank') {
       return `Pick a whole number from 0 to ${p.range}. Everyone's numbers are lined up from lowest to highest: ${ringText(p)}.`;
     }
@@ -51,7 +63,11 @@ export const avoid = {
   },
 
   prepare(p, d) {
-    if (p.mode === 'rank') {
+    if (p.mode === 'far') {
+      const [N, D] = p.stat === 'median' ? [quantile(d, 0.5), 1] : [sumOf(d), totalOf(d)];
+      return { N, D, mid: N / D, lo: quantile(d, p.outer / 100), hi: quantile(d, 1 - p.outer / 100) };
+    }
+    if (p.mode === 'rank' || p.mode === 'farRank') {
       const below = [];
       let c = 0;
       for (const x of d.w) { below.push(c); c += x; }
@@ -62,6 +78,15 @@ export const avoid = {
   },
 
   payoff(p, ctx, answer) {
+    if (p.mode === 'far') {
+      if (answer < ctx.lo || answer > ctx.hi) return 0;
+      return Math.abs(answer * ctx.D - ctx.N) / ctx.D;
+    }
+    if (p.mode === 'farRank') {
+      const i = answer - ctx.d.min;
+      const place = (100 * (ctx.below[i] + ctx.d.w[i] / 2)) / ctx.total;
+      return place < p.outer - 1e-9 || place > 100 - p.outer + 1e-9 ? 0 : Math.abs(place - 50);
+    }
     if (p.mode === 'rank') {
       const i = answer - ctx.d.min;
       const gap = 100 * Math.abs((ctx.below[i] + ctx.d.w[i] / 2) / ctx.total - 0.5);
@@ -74,6 +99,9 @@ export const avoid = {
   },
 
   reveal(p, ctx, d) {
+    if (p.mode === 'farRank') {
+      return { lo: quantile(d, p.outer / 100), hi: quantile(d, 1 - p.outer / 100), median: quantile(d, 0.5) };
+    }
     if (p.mode === 'rank') {
       const at = (gap) => quantile(d, (50 + gap) / 100);
       return { rings: p.edges.map((e, i) => ({ points: p.points[i], lo: at(-e), hi: at(e) })) };
@@ -89,6 +117,14 @@ export const avoid = {
     const deepest = [...s.levelBest].reverse().find(Boolean);
     const plural = s.bestPayoff === 1 ? '' : 's';
     let text = `Today's crowd averaged ${s.depth.toFixed(1)} steps of thinking. `;
+    if (p.mode === 'far' || p.mode === 'farRank') {
+      const mid = p.mode === 'far' ? `${statWord(p)} was ${fmt(s.mid)}` : `median was ${s.median}`;
+      text += `The crowd's ${mid}, and its lowest and highest ${p.outer}% started below ${s.lo} and above ${s.hi}, so anything out there scored nothing. `;
+      text += `The best answers sat just inside that edge: ${answerList(s.bestAnswers)}. `;
+      text += `Level-1 bots expected a random crowd and went for ${answerList(l1)}; deeper bots expected that, which pulled the edge in, and settled on ${answerList(deepest)}. `;
+      text += `${fmt(100 * s.zeroShare, 0)}% of the crowd scored nothing.`;
+      return text;
+    }
     if (p.mode === 'rank') {
       const [mid, ...rest] = s.rings;
       text += `Lined up from lowest to highest, the middle ${2 * p.edges[0]}% of answers ran from ${mid.lo} to ${mid.hi}`;
