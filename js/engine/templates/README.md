@@ -26,7 +26,9 @@ Optional hooks:
 | `label(params, answer)` | How to show an encoded answer (selfref: "YES, 70%"). |
 
 Templates: `target` (1), `avoid` (2), `underbid` (3), `threshold` (4), `common` (5), `catch` (6, in `catchpoints.js`),
-`splitsteal` (7), `selfref` (8), `tank` (9).
+`splitsteal` (7, retired), `selfref` (8), `tank` (9), `lowball` (10), `crowdpoints` (11), `rare` (12).
+New formats reuse a calibrated family (lowball → underbid, crowdpoints → catch, rare → common) and older variants
+stay in the code (the YouTube calibration questions and published days use them) even when no longer scheduled.
 
 Rules:
 - A payoff must be a function of the crowd *distribution*: one player's own answer does not move a crowd of

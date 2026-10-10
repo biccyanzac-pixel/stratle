@@ -62,3 +62,19 @@ export function addAll(dists) {
   for (const d of dists) for (let i = 0; i < w.length; i++) w[i] += d.w[i];
   return makeDist(min, max, w);
 }
+
+/**
+ * Mean of the part of the crowd between two cumulative shares, e.g. (0.25, 0.75) is the average of the middle
+ * half and (0.5, 1) of the top half. Answers straddling a boundary count in proportion.
+ */
+export function partialMean(d, lo, hi) {
+  const total = totalOf(d), a = lo * total, b = hi * total;
+  let c = 0, s = 0;
+  for (let i = 0; i < d.w.length; i++) {
+    const w = d.w[i];
+    const overlap = Math.max(0, Math.min(c + w, b) - Math.max(c, a));
+    s += overlap * (d.min + i);
+    c += w;
+  }
+  return s / (b - a);
+}

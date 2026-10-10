@@ -16,8 +16,12 @@ export const underbid = {
   family: 'underbid',
   kind: 'number',
 
+  // Small ranges (1-10, 1-15) collapsed to "bid 1 or 2" too often, so bids now go up to 20-100, and two
+  // days in three have a soft line: over it you lose `over` points per 1 you are over, instead of everything.
   sampleParams(rng) {
-    return { max: pick(rng, [10, 12, 15, 20, 25, 30]), c: pick(rng, FACTORS), stat: rng() < 0.75 ? 'mean' : 'median' };
+    const p = { max: pick(rng, [20, 30, 50, 100]), c: pick(rng, FACTORS), stat: rng() < 0.75 ? 'mean' : 'median' };
+    if (rng() < 2 / 3) p.over = pick(rng, [2, 3, 5]);
+    return p;
   },
 
   grid: ({ max }) => ({ min: 1, max }),
@@ -32,7 +36,9 @@ export const underbid = {
   jokers: ({ max }) => [max, 7, Math.min(max, 13), Math.round(max / 2)],
   equilibrium: () => [1], // undercutting all the way down: the safest bid
 
-  prompt: ({ max, c, stat }) => `Bid a whole number from 1 to ${max}. You win your bid in points, but only if it is below ${lineText(c, stat)}.`,
+  prompt: ({ max, c, stat, over }) => (over
+    ? `Bid a whole number from 1 to ${max}. Below ${lineText(c, stat)} you win your bid in points. At or above that line, you win your bid minus ${over} points for every 1 you are over (never below 0).`
+    : `Bid a whole number from 1 to ${max}. You win your bid in points, but only if it is below ${lineText(c, stat)}.`),
 
   prepare({ c, stat }, d) {
     const total = totalOf(d), sum = sumOf(d);
@@ -40,8 +46,9 @@ export const underbid = {
     return { N, D, mean: sum / total, line: N / D, tol: 1e-9 * N };
   },
 
-  payoff(params, { N, D, tol }, bid) {
-    return bid * D < N - tol ? bid : 0;
+  payoff({ over }, { N, D, tol, line }, bid) {
+    if (bid * D < N - tol) return bid;
+    return over ? Math.max(0, bid - over * (bid - line)) : 0;
   },
 
   reveal: (params, ctx) => ({ line: ctx.line }),
@@ -53,11 +60,15 @@ export const underbid = {
     const statValue = p.stat === 'median' ? s.median : s.mean;
     let text = `Today's crowd averaged ${s.depth.toFixed(1)} steps of thinking and its ${word} bid was ${fmt(statValue, 2)}`;
     text += p.c[0] === p.c[1] ? '. ' : `, so the line (${fraction(p.c)} of it) was ${fmt(s.line, 2)}. `;
-    text += best && s.bestPayoff > 0
-      ? `The highest bid under the line was ${best}, so that was the best answer; every bid of ${best + 1} or more scored nothing. `
-      : 'No bid was under the line today, so nobody could score. ';
+    if (p.over) {
+      text += `The best bid was ${answerList(s.bestAnswers)}: just under the line keeps the whole bid, while going over costs ${p.over} points for every 1 over. `;
+    } else {
+      text += best && s.bestPayoff > 0
+        ? `The highest bid under the line was ${best}, so that was the best answer; every bid of ${best + 1} or more scored nothing. `
+        : 'No bid was under the line today, so nobody could score. ';
+    }
     text += `Level-0 bots took the points at face value and bid high; ${chain.join(', ')}. `;
-    text += `${fmt(100 * s.zeroShare, 0)}% of the crowd bid too high and scored nothing.`;
+    text += p.over ? `${fmt(100 * s.zeroShare, 0)}% of the crowd went so far over that it scored nothing.` : `${fmt(100 * s.zeroShare, 0)}% of the crowd bid too high and scored nothing.`;
     return text;
   },
 };

@@ -134,8 +134,9 @@ function draw(cdf, u) {
  * and an answer from that level's distribution. Returns count distributions per type:
  * index 0..maxLevel are levels, then theorists, then jokers.
  */
-export function sampleCrowd({ levels, f, eq = 0, eqAnswers = null, joker, jokers, size, rng }) {
+export function sampleCrowd({ levels, f, eq = 0, eqAnswers = null, joker, jokers: all, size, rng }) {
   const { min, max } = levels[0];
+  const jokers = all.filter((v) => v >= min && v <= max); // a joker list may name numbers outside a small range
   const K = levels.length;
   const counts = Array.from({ length: K + 2 }, () => new Array(max - min + 1).fill(0));
   const levelCdf = cumulative(makeDist(0, f.length - 1, f));
@@ -156,8 +157,9 @@ export function sampleCrowd({ levels, f, eq = 0, eqAnswers = null, joker, jokers
 }
 
 /** The crowd's expected answer distribution (sums to 1), without sampling bots. Used for calibration. */
-export function expectedCrowd({ levels, f, eq = 0, eqAnswers = null, joker, jokers }) {
+export function expectedCrowd({ levels, f, eq = 0, eqAnswers = null, joker, jokers: all }) {
   const { min, max } = levels[0];
+  const jokers = all.filter((v) => v >= min && v <= max);
   const eqShare = eqAnswers ? eq : 0;
   const w = mix(levels, f).w.map((x) => x * (1 - eqShare - joker));
   for (const v of eqAnswers ?? []) w[v - min] += eqShare / eqAnswers.length;
