@@ -1,0 +1,78 @@
+// Leaderboard client (worker/). Every call fails soft: with no backend the game still works, just without a board.
+// The URL comes from data/config.json; ?api=<url> overrides it for local testing.
+
+const SESSION_KEY = 'stratle:session';
+const NAME_KEY = 'stratle:name';
+let base;
+let memSession = null;
+
+export async function loadConfig() {
+  if (base !== undefined) return base;
+  try {
+    const cfg = await (await fetch('data/config.json', { cache: 'no-cache' })).json();
+    const override = new URLSearchParams(location.search).get('api');
+    base = (override || cfg.leaderboardUrl || '').replace(/\/+$/, '') || null;
+  } catch { base = null; }
+  return base;
+}
+
+export const enabled = () => !!base;
+
+async function call(path, body) {
+  if (!base) throw new Error('No leaderboard configured.');
+  const res = await fetch(base + path, body === undefined ? undefined
+    : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let data = null;
+  try { data = await res.json(); } catch { /* handled below */ }
+  if (!res.ok) {
+    const e = new Error(data?.message || `Leaderboard error (HTTP ${res.status}).`);
+    e.status = res.status; e.code = data?.error;
+    throw e;
+  }
+  return data;
+}
+
+function readSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; } }
+function writeSession(s) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch { /* private mode */ } }
+
+let pendingSession = null;
+export async function session(fresh = false) {
+  if (!fresh) { const s = memSession || readSession(); if (s?.playerId && s?.token) return (memSession = s); }
+  // Share one in-flight request, so quick answers can't each create their own session.
+  pendingSession ??= call('/api/session', {}).then((s) => { memSession = s; writeSession(s); return s; }).finally(() => { pendingSession = null; });
+  return pendingSession;
+}
+
+export function playerId() { return (memSession || readSession())?.playerId ?? null; }
+// Stratle's name, else the one used in any other jacob.gg game (kit/jgg.js); saving shares it back.
+export function savedName() { try { return localStorage.getItem(NAME_KEY) || window.JGG?.name() || ''; } catch { return ''; } }
+export function saveName(n) { window.JGG?.setName(n); try { localStorage.setItem(NAME_KEY, n); } catch { /* ignore */ } }
+
+/**
+ * Record one question's answer. The server scores it against the day's crowd itself.
+ * Submissions go one at a time, in order: the server requires questions in order.
+ */
+let queue = Promise.resolve();
+export function submitAnswer(args) {
+  const run = queue.then(() => send(args));
+  queue = run.catch(() => {});
+  return run;
+}
+
+async function send({ day, q, answer, name }) {
+  const body = { day, q, answer, name };
+  let s = await session();
+  try { return await call('/api/answer', { ...s, ...body }); }
+  catch (e) {
+    if (e.code !== 'bad_session') throw e;
+    s = await session(true);
+    return call('/api/answer', { ...s, ...body });
+  }
+}
+
+export function board(day, late = false) {
+  const pid = playerId();
+  return call(`/api/leaderboard?day=${day}${late ? '&late=1' : ''}${pid ? '&playerId=' + encodeURIComponent(pid) : ''}`);
+}
+
+export function days(from, to) { return call(`/api/days?from=${from}&to=${to}`); }

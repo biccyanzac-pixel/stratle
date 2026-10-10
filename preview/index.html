@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Stratle preview</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #fcfcfb; --surface: #ffffff; --border: #e4e3df; --text: #0b0b0b; --muted: #52514e;
+    --bar: #a9c4ea; --you: #eb6834; --best: #1a7f37; --accent: #2a78d6; --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --surface: #1d1d1c; --border: #33322f; --text: #f0efec; --muted: #c3c2b7;
+      --bar: #3d5f8f; --you: #f08451; --best: #4fbf6b; --accent: #3987e5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+  h1 { font-size: 20px; margin: 0 12px 0 0; }
+  .note { color: var(--muted); font-size: 13px; }
+  input, select, button { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.pick { display: block; width: 100%; text-align: left; margin: 4px 0; }
+  button.pick.on { outline: 2px solid var(--accent); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin: 12px 0; }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .prompt { white-space: pre-line; margin: 6px 0 12px; font-size: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .score { font-size: 28px; font-weight: 700; }
+  .explain { margin-top: 8px; }
+  .depth { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 6px 0 2px; }
+  .depth span { display: block; height: 100%; }
+  .legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 10px; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+  svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .total { position: sticky; bottom: 0; background: var(--bg); padding: 8px 0; border-top: 1px solid var(--border); }
+  input[type=range] { width: 100%; padding: 0; }
+  @media (max-width: 480px) { .score { font-size: 24px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Stratle preview</h1>
+    <span class="row">
+      <button id="prev" aria-label="Previous day">◀</button>
+      <input id="date" type="date">
+      <button id="next" aria-label="Next day">▶</button>
+      <button id="today">Today</button>
+    </span>
+  </header>
+  <p class="note">Local tool for trying any scheduled day. Answers are not saved anywhere. <span id="persona"></span></p>
+  <div id="questions"></div>
+  <div class="total card" id="total"></div>
+</main>
+<script type="module" src="preview.js"></script>
+</body>
+</html>

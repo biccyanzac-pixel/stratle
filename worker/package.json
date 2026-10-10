@@ -1,0 +1,13 @@
+{
+  "name": "stratle-leaderboard-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:local": "wrangler dev --local --port 8841 --var ALLOWED_ORIGINS:http://localhost:8084 --var SITE_URL:http://localhost:8084/site/",
+    "db:init:local": "wrangler d1 execute stratle-leaderboard --local --file=schema.sql",
+    "db:init": "wrangler d1 execute stratle-leaderboard --remote --file=schema.sql",
+    "test": "node test/e2e.mjs http://127.0.0.1:8841",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

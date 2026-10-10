@@ -1,0 +1,16 @@
+{
+  "name": "stratle",
+  "private": true,
+  "type": "module",
+  "description": "Stratle: daily game theory against a simulated cognitive-hierarchy crowd.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "simulate": "node scripts/simulate.js",
+    "schedule": "node scripts/schedule.js",
+    "generate": "node scripts/generate.js",
+    "preview": "node scripts/serve.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.0"
+  }
+}

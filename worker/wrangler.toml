@@ -1,0 +1,14 @@
+name = "stratle-leaderboard"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stratle-leaderboard"
+database_id = "6b07417a-dc89-4a74-9b19-d42cbb0e6c2a"
+
+[vars]
+# Browser origins allowed to call this API (comma-separated).
+ALLOWED_ORIGINS = "https://biccyanzac-pixel.github.io"
+# Where the day files are served from (the worker scores answers against them).
+SITE_URL = "https://biccyanzac-pixel.github.io/stratle/"

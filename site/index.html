@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stratle</title>
+    <meta name="description" content="Five game theory questions a day against a crowd of 10,000 simulated players modelled on real people. Outguess the crowd." />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="https://biccyanzac-pixel.github.io/jacob.gg/kit/jgg.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://biccyanzac-pixel.github.io/jacob.gg/kit/jgg.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <a class="wordmark" href="https://biccyanzac-pixel.github.io/jacob.gg/">jacob<span>.gg</span></a>
+      </header>
+
+      <section class="card" id="card">
+        <div class="card-top">
+          <span class="eyebrow" id="daynum">Stratle</span>
+          <span class="eyebrow countdown" id="countdown"></span>
+        </div>
+
+        <!-- Intro -->
+        <div id="intro">
+          <p class="eyebrow challenge-label" id="level">Today's game</p>
+          <h1 class="prompt">Outguess the crowd</h1>
+          <p class="riddle-note">
+            5 game theory questions. Every answer is scored against the same crowd of 10,000 simulated players, built
+            to think like real people do. Up to 100 points a question: the best possible answer against today's
+            crowd gets 100.
+          </p>
+          <p class="crowd-hint" id="crowd-hint" hidden></p>
+
+          <form class="play" id="start-form">
+            <label class="field" id="name-field">
+              <span class="label">Your name</span>
+              <input id="name" type="text" maxlength="20" autocomplete="nickname" placeholder="e.g. jacob" required />
+            </label>
+            <p class="playing-as" id="playing-as" hidden></p>
+            <p class="error" id="start-error" role="alert" hidden></p>
+            <button class="submit" id="start" type="submit">
+              <span class="submit-label" id="start-label">Start question 1 of 5</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- A question -->
+        <div id="question" hidden>
+          <div class="round-head">
+            <p class="eyebrow challenge-label" id="q-label">Question 1 of 5</p>
+            <p class="running" id="running"></p>
+          </div>
+          <p class="q-prompt" id="q-prompt"></p>
+          <div id="q-input"></div>
+          <p class="error" id="q-error" role="alert" hidden></p>
+          <button class="submit" id="lock" type="button" disabled>Lock in</button>
+
+          <div class="reveal" id="reveal" hidden>
+            <div class="reveal-scores">
+              <div>
+                <p class="eyebrow">You scored</p>
+                <p class="score" id="q-score">0</p>
+              </div>
+              <div class="compare">
+                <p class="compare-row"><span>Average simulated player</span><strong id="crowd-avg"></strong></p>
+                <p class="compare-row" id="players-avg-row" hidden><span id="players-avg-label">Average real player</span><strong id="players-avg"></strong></p>
+              </div>
+            </div>
+            <p class="you-best" id="you-best"></p>
+            <div class="chart-wrap" id="chart"></div>
+            <p class="chart-note" id="chart-note"></p>
+            <div id="depth"></div>
+            <p class="explain" id="explain"></p>
+            <button class="submit" id="next" type="button">Next question →</button>
+          </div>
+        </div>
+
+        <!-- Finished -->
+        <div class="attempts" id="done" hidden>
+          <p class="eyebrow" id="daily-score-caption">Today's score</p>
+          <p class="score" id="daily-score">0</p>
+          <p class="out-of">out of 500</p>
+          <ol class="attempt-list" id="round-list"></ol>
+          <button class="submit share" id="share" type="button">Share result</button>
+          <p class="fineprint" id="share-done" hidden>Copied to clipboard.</p>
+          <div id="rate"></div>
+          <p class="attempts-done">Come back tomorrow for five new questions and a new crowd.</p>
+        </div>
+      </section>
+
+      <section class="card board" id="board" hidden>
+        <div class="card-top">
+          <h2 class="eyebrow">Today's leaderboard</h2>
+          <span class="eyebrow" id="players"></span>
+        </div>
+        <ol class="rows" id="rows"></ol>
+        <p class="board-empty" id="board-empty" hidden>Nobody has played yet today. Be the first.</p>
+        <p class="board-note" id="board-note" hidden></p>
+      </section>
+
+      <section class="card archive" id="archive">
+        <div class="card-top">
+          <h2 class="eyebrow">Archive: replay a past day</h2>
+        </div>
+        <p class="archive-note">
+          Replays go on a separate "played later" board and never change a day's original results.
+        </p>
+        <div class="archive-picker">
+          <button type="button" class="archive-browse" id="archive-browse">Browse archive</button>
+        </div>
+        <ul class="archive-list" id="archive-list" hidden></ul>
+      </section>
+
+      <footer class="footer">
+        <p>New questions and a new crowd every day at midnight UTC. Ties go to whoever finished first.</p>
+        <p>The crowd is a cognitive-hierarchy model calibrated on real beauty-contest experiments and surveys.
+          <a href="https://github.com/biccyanzac-pixel/stratle/blob/main/docs/calibration.md">How it's built</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+node_modules/
+worker/node_modules/
+worker/.wrangler/
+# Downloaded papers, charts and raw sheets: copyrighted or not ours to redistribute.
+calibration/raw/
+# The YouTube survey data: calibration only, never commit or redistribute.
+calibration/private/
