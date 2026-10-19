@@ -971,7 +971,7 @@ a { color: var(--accent); }
   padding: 0.7rem 0.95rem;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 80ms var(--jgg-ease-out, cubic-bezier(0.23, 1, 0.32, 1)), border-color var(--jgg-t-hover, 150ms) ease, background-color var(--jgg-t-hover, 150ms) ease;
+  transition: transform 80ms var(--jgg-ease-out, cubic-bezier(0.23, 1, 0.32, 1)), border-color var(--jgg-t-hover, 150ms) ease, background-color var(--jgg-t-hover, 150ms) ease, box-shadow var(--jgg-t-hover, 150ms) ease;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -979,7 +979,7 @@ a { color: var(--accent); }
 @media (hover: hover) and (pointer: fine) {
   .option:hover:not(:disabled) { border-color: var(--accent); }
 }
-.option:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--jgg-t-press, 120ms), var(--jgg-t-hover, 150ms), var(--jgg-t-hover, 150ms); }
+.option:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--jgg-t-press, 120ms), var(--jgg-t-hover, 150ms), var(--jgg-t-hover, 150ms), var(--jgg-t-hover, 150ms); }
 .option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .option:disabled { cursor: default; }

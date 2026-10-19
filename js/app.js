@@ -53,9 +53,10 @@ function phase(id) {
   if (m) m.swap(from, to); else to.hidden = false;
   for (const e of others) e.hidden = true;
 }
-function settle(node, value) {
+// duration: 700 ms for the once-a-day total, shorter for the per-question score (seen 5 times a day).
+function settle(node, value, duration) {
   const m = motion();
-  if (m) m.settle(node, value); else node.textContent = value; // never awaited: nothing waits for a count-up
+  if (m) m.settle(node, value, { duration }); else node.textContent = value; // never awaited: nothing waits for a count-up
 }
 
 async function loadDay(day) {
@@ -219,7 +220,7 @@ function revealQuestion(r, curve = scoreCurve(current.q), fresh = false) {
   $('lock').hidden = true;
   const s = summarize(q);
   const sc = $('q-score');
-  if (fresh) settle(sc, r.points); else sc.textContent = r.points;
+  if (fresh) settle(sc, r.points, 280); else sc.textContent = r.points;
   sc.className = `score ${r.points >= 50 ? 'good' : 'bad'}`;
   $('crowd-avg').textContent = Math.round(curve.crowdAverage);
   const best = s.bestAnswers.length > 4
@@ -242,7 +243,7 @@ function revealQuestion(r, curve = scoreCurve(current.q), fresh = false) {
   show('reveal', true);
   if (m) {
     m.reveal(['.reveal-scores', '#you-best', '#chart', '#depth', '#explain'].map((x) => document.querySelector(x)));
-    m.enter($('chart-note'), { kind: 'reveal', delay: 100 });
+    m.enter($('chart-note'), { kind: 'reveal', delay: 125 }); // after the chart, before the depth bar
   }
 }
 
@@ -294,10 +295,9 @@ async function renderDone(fresh = false) {
   }));
   if (fresh) motion()?.reveal($('round-list').children);
   show('share-done', false);
-  // The rating widget's first build costs ~40-90 ms (date formatting); after a finish, let the done screen's first
-  // frame go out before it.
-  const rate = () => window.JGG?.rate({ game: 'stratle', day, mount: $('rate') });
-  if (fresh) requestAnimationFrame(() => setTimeout(rate)); else rate();
+  // Built straight away: building it a frame later pushed the board down once it landed. (The kit now builds its
+  // date formatter once, so the first build is cheap.)
+  window.JGG?.rate({ game: 'stratle', day, mount: $('rate') });
 }
 
 function shareText() {
