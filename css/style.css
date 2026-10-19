@@ -1067,9 +1067,10 @@ input[type="range"] { width: 100%; font-size: max(16px, 1em); accent-color: var(
   }
 }
 
-/* The crowd chart, on a fresh reveal only (chart.js adds .grow): bars grow from the baseline (stagger capped near
-   150 ms in all, delays set per bar), then the markers fade in; the depth bar wipes left to right. */
-.chart.grow .bar {
+/* The crowd chart, on a fresh reveal only (chart.js adds .grow): the bars grow from the baseline as one group (a
+   per-bar stagger repainted the SVG too often at 4x CPU throttle), then the markers fade in; the depth bar wipes
+   left to right. */
+.chart.grow .bars {
   transform-box: fill-box;
   transform-origin: 50% 100%;
   animation: s-grow 300ms var(--jgg-ease-out, cubic-bezier(0.23, 1, 0.32, 1)) var(--d, 0ms) backwards;
@@ -1082,7 +1083,7 @@ input[type="range"] { width: 100%; font-size: max(16px, 1em); accent-color: var(
 @media (prefers-reduced-motion: reduce) {
   .reveal { animation-name: s-fade; animation-duration: var(--jgg-t-exit, 160ms); animation-timing-function: ease; }
   .reveal.staged,
-  .chart.grow .bar,
+  .chart.grow .bars,
   .chart.grow .mark,
   .depth.grow .depth-bar { animation: none; }
 }
