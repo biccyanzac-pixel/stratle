@@ -83,13 +83,13 @@ export function crowdChart({ q, summary: s, curve, answer, width, grow = false, 
   };
   const accent = css('--accent'), surface = css('--surface'), muted = css('--muted');
   const gap = bars.length > 40 ? 0.6 : 2;
-  const step = Math.min(15, 150 / bars.length); // the whole stagger stays near 150 ms however many bars
-  bars.forEach((b, i) => {
+  const barG = add('g', { class: 'bars', style: `--d:${Math.round(delay)}ms` }); // grows as one group
+  bars.forEach((b) => {
     const bx = X(b.x0) + gap / 2, bw = Math.max(1, X(b.x1) - X(b.x0) - gap);
     const g = add('g', {});
     const range = choice || b.x1 - b.x0 <= 1.5 ? `${b.label ?? Math.round(b.x0)}${suffix}` : `${Math.round(b.x0)}–${Math.ceil(b.x1) - 1}${suffix}`;
     add('title', {}, `${range}: ${((100 * b.n) / s.size).toFixed(1)}% of the crowd · scores ${Math.round(b.pts)}/100`, g);
-    add('rect', { x: bx, y: Y(b.n), width: bw, height: Math.max(0, H - pad.b - Y(b.n)), rx: Math.min(4, bw / 2), fill: `color-mix(in oklab, ${accent} 55%, ${surface})`, class: 'bar', style: `--d:${Math.round(delay + i * step)}ms` }, null, g);
+    add('rect', { x: bx, y: Y(b.n), width: bw, height: Math.max(0, H - pad.b - Y(b.n)), rx: Math.min(4, bw / 2), fill: `color-mix(in oklab, ${accent} 55%, ${surface})` }, null, barG);
     if (!choice) add('rect', { x: X(b.x0), y: stripY, width: Math.max(1, X(b.x1) - X(b.x0)), height: stripH, fill: `color-mix(in oklab, ${accent} ${Math.round(b.pts)}%, ${surface})` }, null, g);
     // a wide invisible hit target for the tooltip
     add('rect', { x: X(b.x0), y: pad.t, width: Math.max(1, X(b.x1) - X(b.x0)), height: H - pad.t - pad.b + stripH + 4, fill: 'transparent' }, null, g);
@@ -103,7 +103,7 @@ export function crowdChart({ q, summary: s, curve, answer, width, grow = false, 
   } else {
     for (const t of ticks) add('text', { x: X(t + 0.5), y: H - 6, 'text-anchor': 'middle', class: 'chart-tick' }, `${t}${suffix}`);
   }
-  const marks = add('g', { class: 'mark', style: `--d:${Math.round(delay + 150 + 300)}ms` }); // after the bars
+  const marks = add('g', { class: 'mark', style: `--d:${Math.round(delay + 300)}ms` }); // after the bars
   const marker = (v, colour, text, row) => {
     if (v < x0 || v > x1) return;
     add('line', { x1: X(v), x2: X(v), y1: 6 + row * 12 + 4, y2: H - pad.b, stroke: colour, 'stroke-width': 2, 'stroke-dasharray': '4 3' }, null, marks);
