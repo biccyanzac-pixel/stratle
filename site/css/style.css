@@ -22,9 +22,10 @@ html {
 
 .card-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.25rem 1rem;
   margin-bottom: 1rem;
 }
 
@@ -209,7 +210,7 @@ textarea:focus-visible,
 
 .row {
   display: grid;
-  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  grid-template-columns: minmax(1.75rem, max-content) minmax(0, 1fr) auto; /* a rank of 1234 still fits */
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem 0.65rem;
@@ -424,15 +425,19 @@ textarea:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .attempt-label {
+  min-width: 0;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .attempt-score {
+  flex: none;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 1.05rem;
@@ -740,10 +745,14 @@ a { color: var(--accent); }
 
 .round-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0 1rem;
 }
+
+.round-head > * { min-width: 0; overflow-wrap: anywhere; }
+.round-head .running { margin-left: auto; }
 
 .timer {
   margin: 0;
@@ -902,7 +911,13 @@ a { color: var(--accent); }
 
 .row-emoji { font-size: 0.8rem; letter-spacing: 0.05em; }
 
-.row-sub { font-size: 0.8rem; color: var(--muted); }
+.row-sub { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Long words from data (names, error messages, archive lines) wrap instead of pushing the card wider. */
+.error, .board-note, .board-empty, .archive-list-day, .archive-list-prompt, .archive-list-empty, .compare-row span { overflow-wrap: anywhere; }
+.compare-row span { min-width: 0; }
+/* Short labels that read badly split over two lines: they move to their own line instead. */
+.countdown, .running, #players { white-space: nowrap; }
 
 .footer p + p { margin-top: 0.35rem; }
 

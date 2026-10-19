@@ -101,7 +101,8 @@ export function crowdChart({ q, summary: s, curve, answer, width, grow = false, 
       add('text', { x: X(b.x0 + 0.5), y: H - pad.b + 30, 'text-anchor': 'middle', class: 'chart-pts' }, `${Math.round(b.pts)}/100`);
     }
   } else {
-    for (const t of ticks) add('text', { x: X(t + 0.5), y: H - 6, 'text-anchor': 'middle', class: 'chart-tick' }, `${t}${suffix}`);
+    // the end ticks anchor inwards, so a wide number (1000, 3795) never runs off the chart
+    ticks.forEach((t, k) => add('text', { x: X(t + 0.5), y: H - 6, 'text-anchor': k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle', class: 'chart-tick' }, `${t}${suffix}`));
   }
   const marks = add('g', { class: 'mark', style: `--d:${Math.round(delay + 300)}ms` }); // after the bars
   const marker = (v, colour, text, row) => {
