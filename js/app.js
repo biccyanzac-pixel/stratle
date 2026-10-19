@@ -336,9 +336,9 @@ async function renderBoard() {
     : el('li', { class: `row${r.you ? ' me' : ''}` },
       el('span', { class: 'row-rank', text: `${r.rank}` }),
       el('div', { class: 'row-main' },
-        el('div', { class: 'row-name', text: r.name }),
+        el('div', { class: 'row-name', text: r.name || 'Anonymous', title: r.name || '', dir: 'auto' }),
         el('div', { class: 'row-sub' },
-          el('span', { class: 'row-emoji', text: r.rounds.map(scoreEmoji).join('') }),
+          el('span', { class: 'row-emoji', text: (r.rounds || []).map(scoreEmoji).join('') }),
           r.played < QUESTIONS ? ` · ${r.played}/${QUESTIONS} questions` : '')),
       el('span', { class: 'row-score', text: String(r.total) }))));
   show('board-empty', !b.top.length);
