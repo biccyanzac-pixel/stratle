@@ -15,7 +15,9 @@ const SITE = 'https://biccyanzac-pixel.github.io/stratle/';
 const NAMES = {
   target: 'Hit the target', avoid: 'Stand out', underbid: 'Bid under the line', threshold: 'Under the cap',
   common: 'Most or least common', catch: 'Points with a catch', selfref: 'YES or NO?', tank: 'Estimate N', splitsteal: 'Split or steal',
+  lowball: 'Stay in the low group', crowdpoints: 'Points, if not crowded', rare: 'Rare or popular number',
 };
+const nameOf = (template) => NAMES[template] ?? 'Question'; // a new template never shows "undefined"
 
 let index = null;           // data/index.json: { first, last }
 const dayCache = new Map(); // day -> data/days/<day>.json
@@ -181,7 +183,7 @@ async function startQuestion(i, review = false) {
   const q = data.questions[i];
   current = { i, q, answer: null, done: false, review };
   show('reveal', false); show('q-error', false);
-  $('q-label').textContent = `Question ${i + 1} of ${QUESTIONS} · ${NAMES[q.template] ?? q.template}`;
+  $('q-label').textContent = `Question ${i + 1} of ${QUESTIONS} · ${nameOf(q.template)}`;
   const before = total(rounds().slice(0, i));
   $('running').textContent = i ? `${before} points so far` : '';
   $('q-prompt').textContent = questionPrompt(q);
@@ -288,7 +290,7 @@ async function renderDone(fresh = false) {
     const q = data?.questions[i];
     return el('li', { class: 'attempt-row' },
       el('button', { class: 'attempt-head review', type: 'button', onclick: () => startQuestion(i, true) },
-        el('span', { class: 'attempt-label', text: `${scoreEmoji(r.points)} Q${i + 1} · ${q ? NAMES[q.template] : ''}` }),
+        el('span', { class: 'attempt-label', text: `${scoreEmoji(r.points)} Q${i + 1} · ${q ? nameOf(q.template) : ''}` }),
         el('span', { class: `attempt-score ${r.points >= 50 ? 'good' : 'bad'}`, text: String(r.points) })),
       el('p', { class: 'attempt-answer' },
         q ? `You: ${shortLabel(q, r.answer)} · simulated players averaged ${r.crowdAvg}` : `Simulated players averaged ${r.crowdAvg}`));
