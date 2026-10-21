@@ -15,7 +15,9 @@ const SITE = 'https://biccyanzac-pixel.github.io/stratle/';
 const NAMES = {
   target: 'Hit the target', avoid: 'Stand out', underbid: 'Bid under the line', threshold: 'Under the cap',
   common: 'Most or least common', catch: 'Points with a catch', selfref: 'YES or NO?', tank: 'Estimate N', splitsteal: 'Split or steal',
+  lowball: 'Stay in the low group', crowdpoints: 'Points, if not crowded', rare: 'Rare or popular number',
 };
+const nameOf = (template) => NAMES[template] ?? 'Question'; // a new template never shows "undefined"
 
 let index = null;           // data/index.json: { first, last }
 const dayCache = new Map(); // day -> data/days/<day>.json
@@ -35,6 +37,29 @@ function el(tag, props = {}, ...children) {
 }
 
 const show = (id, on = true) => { $(id).hidden = !on; };
+
+// Motion comes from the kit (JGG.motion, docs/motion-system.md in jacob.gg). The kit loads with defer and can fail,
+// so every call has a plain fallback with the same end state.
+const motion = () => window.JGG?.motion;
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function toCard() {
+  const m = motion(), card = $('card');
+  if (m) m.scroll(card, { block: 'start' });
+  else card.scrollIntoView({ block: 'start', behavior: calm() ? 'auto' : 'smooth' });
+}
+// A phase change: the old screen goes at once and the new one enters (220 ms), usable from its first frame.
+function phase(id) {
+  const to = $(id), m = motion();
+  const others = ['intro', 'question', 'done'].filter((p) => p !== id).map($);
+  const from = others.find((e) => !e.hidden) || null;
+  if (m) m.swap(from, to); else to.hidden = false;
+  for (const e of others) e.hidden = true;
+}
+// duration: 700 ms for the once-a-day total, shorter for the per-question score (seen 5 times a day).
+function settle(node, value, duration) {
+  const m = motion();
+  if (m) m.settle(node, value, { duration }); else node.textContent = value; // never awaited: nothing waits for a count-up
+}
 
 async function loadDay(day) {
   if (!dayCache.has(day)) {
@@ -157,16 +182,17 @@ async function startQuestion(i, review = false) {
   try { data = await loadDay(mode.day); } catch (e) { showError('start-error', e.message); return; }
   const q = data.questions[i];
   current = { i, q, answer: null, done: false, review };
-  show('intro', false); show('done', false); show('reveal', false); show('question', true); show('q-error', false);
-  $('q-label').textContent = `Question ${i + 1} of ${QUESTIONS} · ${NAMES[q.template] ?? q.template}`;
+  show('reveal', false); show('q-error', false);
+  $('q-label').textContent = `Question ${i + 1} of ${QUESTIONS} · ${nameOf(q.template)}`;
   const before = total(rounds().slice(0, i));
   $('running').textContent = i ? `${before} points so far` : '';
   $('q-prompt').textContent = questionPrompt(q);
   $('q-input').replaceChildren(inputFor(q, (a) => { current.answer = a; $('lock').disabled = a === null; }));
   $('lock').hidden = false;
   $('lock').disabled = true;
-  $('card').scrollIntoView({ block: 'start', behavior: 'smooth' });
   if (review) revealQuestion(rounds()[i]);
+  phase('question');
+  toCard();
 }
 
 function lock() {
@@ -177,7 +203,7 @@ function lock() {
   const curve = scoreCurve(q);
   const r = { answer, points: result.score, crowdAvg: Math.round(curve.crowdAverage) };
   store.saveRound(mode.day, mode.late, i, r);
-  revealQuestion(r, curve);
+  revealQuestion(r, curve, true);
   if (api.enabled()) {
     api.submitAnswer({ day: mode.day, q: i, answer, name: api.savedName() })
       .then(() => renderBoard())
@@ -185,7 +211,8 @@ function lock() {
   }
 }
 
-function revealQuestion(r, curve = scoreCurve(current.q)) {
+// fresh: the answer was just locked in, so the reveal plays (a review shows it still).
+function revealQuestion(r, curve = scoreCurve(current.q), fresh = false) {
   const { q, i } = current;
   current.done = true;
   $('q-input').querySelectorAll('button, input').forEach((x) => { x.disabled = true; });
@@ -195,23 +222,31 @@ function revealQuestion(r, curve = scoreCurve(current.q)) {
   $('lock').hidden = true;
   const s = summarize(q);
   const sc = $('q-score');
-  sc.textContent = r.points;
+  if (fresh) settle(sc, r.points, 280); else sc.textContent = r.points;
   sc.className = `score ${r.points >= 50 ? 'good' : 'bad'}`;
   $('crowd-avg').textContent = Math.round(curve.crowdAverage);
   const best = s.bestAnswers.length > 4
     ? `${s.bestAnswers.length} answers tied`
     : s.bestAnswers.map((a) => shortLabel(q, a)).join(' or ');
   $('you-best').textContent = `You: ${shortLabel(q, r.answer)} · Best: ${q.template === 'tank' ? `N = ${q.params.N}` : best}`;
-  $('chart').replaceChildren(crowdChart({ q, summary: s, curve, answer: r.answer, width: $('card').clientWidth - 48 }));
+  const m = fresh ? motion() : null, grow = fresh && !calm();
+  $('chart').replaceChildren(crowdChart({ q, summary: s, curve, answer: r.answer, width: $('card').clientWidth - 48, grow, delay: m ? 100 : 0 }));
   $('chart-note').textContent = TEMPLATES[q.template].kind === 'choice'
     ? 'Bars: how the crowd answered. Under each option: the score it got, out of 100.'
     : 'Bars: how the crowd answered. The strip under the axis: what each answer would have scored (darker = higher).';
   $('depth').replaceChildren(depthMix(s, el));
+  if (grow) $('depth').firstChild.classList.add('grow');
   $('explain').textContent = explain(q, s);
   $('next').textContent = current.review ? 'Back to your score' : i + 1 < QUESTIONS ? 'Next question →' : 'See your score →';
   show('players-avg-row', false);
   showPlayersAverage(i);
+  // With the kit, the parts reveal one by one (50 ms apart) instead of the whole block at once; #next never waits.
+  $('reveal').classList.toggle('staged', !!m || !fresh);
   show('reveal', true);
+  if (m) {
+    m.reveal(['.reveal-scores', '#you-best', '#chart', '#depth', '#explain'].map((x) => document.querySelector(x)));
+    m.enter($('chart-note'), { kind: 'reveal', delay: 125 }); // after the chart, before the depth bar
+  }
 }
 
 async function showPlayersAverage(i) {
@@ -222,7 +257,8 @@ async function showPlayersAverage(i) {
     if (s && s.n >= 2 && current?.i === i) {
       $('players-avg-label').textContent = `Average real player (${s.n})`;
       $('players-avg').textContent = Math.round(s.avg);
-      show('players-avg-row', true);
+      const m = motion(), row = $('players-avg-row');
+      if (m && !current.review) m.enter(row); else row.hidden = false; // arrives later than the rest: one entrance of its own
     }
   } catch { /* the reveal works without it */ }
 }
@@ -232,7 +268,7 @@ function next() {
   const review = current.review;
   current = null;
   if (!review && i < QUESTIONS) startQuestion(i);
-  else { show('question', false); renderDone(); renderBoard(); $('card').scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+  else { phase('done'); renderDone(!review); renderBoard(); toCard(); }
 }
 
 function deepestRead(rs) {
@@ -241,24 +277,28 @@ function deepestRead(rs) {
   return best + 1;
 }
 
-async function renderDone() {
+// fresh: the day was just finished, so the score counts up and the rows reveal (never on a reload or re-render).
+async function renderDone(fresh = false) {
   const { day, late } = mode;
   const rs = rounds();
   show('done', true);
   $('daily-score-caption').textContent = late ? `Your replay of ${day}` : "Today's score";
-  $('daily-score').textContent = total(rs);
+  if (fresh) settle($('daily-score'), total(rs)); else $('daily-score').textContent = total(rs);
   let data = null;
   try { data = await loadDay(day); } catch { /* names fall back to numbers */ }
   $('round-list').replaceChildren(...rs.map((r, i) => {
     const q = data?.questions[i];
     return el('li', { class: 'attempt-row' },
       el('button', { class: 'attempt-head review', type: 'button', onclick: () => startQuestion(i, true) },
-        el('span', { class: 'attempt-label', text: `${scoreEmoji(r.points)} Q${i + 1} · ${q ? NAMES[q.template] : ''}` }),
+        el('span', { class: 'attempt-label', text: `${scoreEmoji(r.points)} Q${i + 1} · ${q ? nameOf(q.template) : ''}` }),
         el('span', { class: `attempt-score ${r.points >= 50 ? 'good' : 'bad'}`, text: String(r.points) })),
       el('p', { class: 'attempt-answer' },
         q ? `You: ${shortLabel(q, r.answer)} · simulated players averaged ${r.crowdAvg}` : `Simulated players averaged ${r.crowdAvg}`));
   }));
+  if (fresh) motion()?.reveal($('round-list').children);
   show('share-done', false);
+  // Built straight away: building it a frame later pushed the board down once it landed. (The kit now builds its
+  // date formatter once, so the first build is cheap.)
   window.JGG?.rate({ game: 'stratle', day, mount: $('rate') });
 }
 
@@ -298,9 +338,9 @@ async function renderBoard() {
     : el('li', { class: `row${r.you ? ' me' : ''}` },
       el('span', { class: 'row-rank', text: `${r.rank}` }),
       el('div', { class: 'row-main' },
-        el('div', { class: 'row-name', text: r.name }),
+        el('div', { class: 'row-name', text: r.name || 'Anonymous', title: r.name || '', dir: 'auto' }),
         el('div', { class: 'row-sub' },
-          el('span', { class: 'row-emoji', text: r.rounds.map(scoreEmoji).join('') }),
+          el('span', { class: 'row-emoji', text: (r.rounds || []).map(scoreEmoji).join('') }),
           r.played < QUESTIONS ? ` · ${r.played}/${QUESTIONS} questions` : '')),
       el('span', { class: 'row-score', text: String(r.total) }))));
   show('board-empty', !b.top.length);
@@ -311,6 +351,7 @@ async function renderBoard() {
 async function browseArchive() {
   const list = $('archive-list');
   if (!list.hidden) { list.hidden = true; return; }
+  const m = motion();
   const today = todayKey();
   const items = [];
   for (let d = addDays(today, -1); index && d >= index.first; d = addDays(d, -1)) items.push(d);
@@ -326,7 +367,7 @@ async function browseArchive() {
         s?.players ? `${s.players} played on the day, best ${s.top}` : 'Nobody played on the day',
         mine !== null ? `you: ${mine}` : null].filter(Boolean).join(' · ') })));
   }) : [el('li', { class: 'archive-list-empty', text: 'No past days yet. Stratle started today.' })]));
-  list.hidden = false;
+  if (m) m.enter(list); else list.hidden = false;
 }
 
 function openArchive(d) {
@@ -334,7 +375,7 @@ function openArchive(d) {
   mode = doneCount(d, false) >= QUESTIONS ? { day: d, late: false } : { day: d, late: true };
   $('archive-list').hidden = true;
   render();
-  $('card').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  toCard();
 }
 
 function showError(id, msg) { $(id).textContent = msg; show(id, true); }

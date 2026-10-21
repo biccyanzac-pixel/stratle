@@ -31,6 +31,7 @@ for (const [w, h, scheme] of [[360, 780, 'dark'], [1200, 900, 'light']]) {
     }
     await page.click('#lock');
     await page.waitForSelector('#reveal:not([hidden])');
+    await page.waitForFunction(() => !document.getElementById('q-score').hasAttribute('aria-hidden')); // count-up done
     const score = Number(await page.textContent('#q-score'));
     if (!(score >= 0 && score <= 100)) errors.push(`${w}px Q${i + 1}: score ${score}`);
     if (!(await page.$('#chart svg'))) errors.push(`${w}px Q${i + 1}: no chart`);
@@ -41,6 +42,7 @@ for (const [w, h, scheme] of [[360, 780, 'dark'], [1200, 900, 'light']]) {
     await page.click('#next');
   }
   await page.waitForSelector('#done:not([hidden])');
+  await page.waitForFunction(() => !document.getElementById('daily-score').hasAttribute('aria-hidden')); // count-up done
   const total = Number(await page.textContent('#daily-score'));
   const rows = await page.$$eval('#round-list .attempt-score', (els) => els.map((e) => Number(e.textContent)));
   if (rows.length !== 5 || rows.reduce((a, b) => a + b, 0) !== total) errors.push(`${w}px: total ${total} vs rows ${rows}`);

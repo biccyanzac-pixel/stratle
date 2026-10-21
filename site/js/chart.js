@@ -58,7 +58,9 @@ function binsFor(q, s, curve, answer) {
   return { bars, xOf: (v) => v + 0.5, ticks };
 }
 
-export function crowdChart({ q, summary: s, curve, answer, width }) {
+// grow: a fresh reveal, so the bars grow in (CSS .chart.grow; reduce motion keeps it static). delay: when the chart
+// itself starts revealing, in ms.
+export function crowdChart({ q, summary: s, curve, answer, width, grow = false, delay = 0 }) {
   const { bars, xOf, ticks, choice, suffix = '' } = binsFor(q, s, curve, answer);
   const W = Math.max(280, Math.min(640, width)), H = W < 460 ? 190 : 220;
   const pad = { l: 6, r: 6, t: 30, b: choice ? 46 : 40 };
@@ -69,7 +71,7 @@ export function crowdChart({ q, summary: s, curve, answer, width }) {
   const Y = (n) => H - pad.b - (n / top) * (H - pad.t - pad.b);
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('class', 'chart');
+  svg.setAttribute('class', grow ? 'chart grow' : 'chart');
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', 'How the crowd answered, and the points each answer would have scored');
   const add = (tag, attrs, text, parent = svg) => {
@@ -81,16 +83,17 @@ export function crowdChart({ q, summary: s, curve, answer, width }) {
   };
   const accent = css('--accent'), surface = css('--surface'), muted = css('--muted');
   const gap = bars.length > 40 ? 0.6 : 2;
-  for (const b of bars) {
+  const barG = add('g', { class: 'bars', style: `--d:${Math.round(delay)}ms` }); // grows as one group
+  bars.forEach((b) => {
     const bx = X(b.x0) + gap / 2, bw = Math.max(1, X(b.x1) - X(b.x0) - gap);
     const g = add('g', {});
     const range = choice || b.x1 - b.x0 <= 1.5 ? `${b.label ?? Math.round(b.x0)}${suffix}` : `${Math.round(b.x0)}–${Math.ceil(b.x1) - 1}${suffix}`;
     add('title', {}, `${range}: ${((100 * b.n) / s.size).toFixed(1)}% of the crowd · scores ${Math.round(b.pts)}/100`, g);
-    add('rect', { x: bx, y: Y(b.n), width: bw, height: Math.max(0, H - pad.b - Y(b.n)), rx: Math.min(4, bw / 2), fill: `color-mix(in oklab, ${accent} 55%, ${surface})` }, null, g);
+    add('rect', { x: bx, y: Y(b.n), width: bw, height: Math.max(0, H - pad.b - Y(b.n)), rx: Math.min(4, bw / 2), fill: `color-mix(in oklab, ${accent} 55%, ${surface})` }, null, barG);
     if (!choice) add('rect', { x: X(b.x0), y: stripY, width: Math.max(1, X(b.x1) - X(b.x0)), height: stripH, fill: `color-mix(in oklab, ${accent} ${Math.round(b.pts)}%, ${surface})` }, null, g);
     // a wide invisible hit target for the tooltip
     add('rect', { x: X(b.x0), y: pad.t, width: Math.max(1, X(b.x1) - X(b.x0)), height: H - pad.t - pad.b + stripH + 4, fill: 'transparent' }, null, g);
-  }
+  });
   add('line', { x1: pad.l, x2: W - pad.r, y1: H - pad.b, y2: H - pad.b, stroke: muted, 'stroke-width': 1 });
   if (choice) {
     for (const b of bars) {
@@ -98,12 +101,14 @@ export function crowdChart({ q, summary: s, curve, answer, width }) {
       add('text', { x: X(b.x0 + 0.5), y: H - pad.b + 30, 'text-anchor': 'middle', class: 'chart-pts' }, `${Math.round(b.pts)}/100`);
     }
   } else {
-    for (const t of ticks) add('text', { x: X(t + 0.5), y: H - 6, 'text-anchor': 'middle', class: 'chart-tick' }, `${t}${suffix}`);
+    // the end ticks anchor inwards, so a wide number (1000, 3795) never runs off the chart
+    ticks.forEach((t, k) => add('text', { x: X(t + 0.5), y: H - 6, 'text-anchor': k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle', class: 'chart-tick' }, `${t}${suffix}`));
   }
+  const marks = add('g', { class: 'mark', style: `--d:${Math.round(delay + 300)}ms` }); // after the bars
   const marker = (v, colour, text, row) => {
     if (v < x0 || v > x1) return;
-    add('line', { x1: X(v), x2: X(v), y1: 6 + row * 12 + 4, y2: H - pad.b, stroke: colour, 'stroke-width': 2, 'stroke-dasharray': '4 3' });
-    add('text', { x: Math.min(W - 18, Math.max(18, X(v))), y: 9 + row * 12, 'text-anchor': 'middle', class: 'chart-mark', fill: colour }, text);
+    add('line', { x1: X(v), x2: X(v), y1: 6 + row * 12 + 4, y2: H - pad.b, stroke: colour, 'stroke-width': 2, 'stroke-dasharray': '4 3' }, null, marks);
+    add('text', { x: Math.min(W - 18, Math.max(18, X(v))), y: 9 + row * 12, 'text-anchor': 'middle', class: 'chart-mark', fill: colour }, text, marks);
   };
   const bestV = q.template === 'tank' ? q.params.N : s.bestAnswers[Math.floor(s.bestAnswers.length / 2)];
   marker(xOf(bestV), css('--good'), q.template === 'tank' ? `N = ${q.params.N}` : 'best', 0);
